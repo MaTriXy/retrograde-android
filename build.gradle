@@ -1,19 +1,19 @@
 buildscript {
-    ext.kotlin_version = '1.1.51'
+    ext.kotlin_version = '1.2.0'
     repositories {
         google()
         jcenter()
         maven { url 'https://maven.fabric.io/public' }
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.0.0-rc2'
+        classpath 'com.android.tools.build:gradle:3.0.1'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath 'io.fabric.tools:gradle:1.24.4'
+        classpath 'io.fabric.tools:gradle:1.25.1'
     }
 }
 
 plugins {
-    id 'com.github.ben-manes.versions' version '0.16.0'
+    id 'com.github.ben-manes.versions' version '0.17.0'
 }
 
 allprojects {
@@ -49,10 +49,10 @@ subprojects {
             android {
                 compileSdkVersion vers.compileSdkVersion
                 buildToolsVersion vers.buildToolsVersion
-
                 defaultConfig {
                     minSdkVersion vers.minSdkVersion
                     targetSdkVersion vers.targetSdkVersion
+                    multiDexEnabled true
                 }
                 lintOptions {
                     abortOnError true
@@ -61,6 +61,10 @@ subprojects {
                 }
                 dexOptions {
                     dexInProcess = true
+                }
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_1_8
+                    targetCompatibility JavaVersion.VERSION_1_8
                 }
             }
         }
@@ -77,7 +81,7 @@ configurations {
 }
 
 dependencies {
-    ktlint 'com.github.shyiko:ktlint:0.10.1'
+    ktlint 'com.github.shyiko:ktlint:0.14.0'
 }
 
 task lintKotlin(type: JavaExec) {
