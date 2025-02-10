@@ -26,17 +26,21 @@ import com.codebutler.retrograde.lib.library.db.RetrogradeDatabase
 import com.codebutler.retrograde.lib.library.db.dao.updateAsync
 import com.codebutler.retrograde.lib.library.db.entity.Game
 import com.gojuno.koptional.Optional
+import io.reactivex.Maybe
 import io.reactivex.Single
 import io.reactivex.functions.Function3
 import java.io.File
 
 class GameLoader(
-        private val coreManager: CoreManager,
-        private val retrogradeDatabase: RetrogradeDatabase,
-        private val gameLibrary: GameLibrary) {
+    private val coreManager: CoreManager,
+    private val retrogradeDatabase: RetrogradeDatabase,
+    private val gameLibrary: GameLibrary
+) {
+
+    fun loadGame(gameId: Int): Maybe<Game> = retrogradeDatabase.gameDao().selectById(gameId)
 
     fun load(gameId: Int): Single<GameData> {
-        return retrogradeDatabase.gameDao().selectById(gameId)
+        return loadGame(gameId)
                 .flatMapSingle { game -> prepareGame(game) }
                 .doOnSuccess { data -> updateTimestamp(data.game) }
     }
@@ -65,8 +69,9 @@ class GameLoader(
 
     @Suppress("ArrayInDataClass")
     data class GameData(
-            val game: Game,
-            val coreFile: File,
-            val gameFile: File,
-            val saveData: ByteArray?)
+        val game: Game,
+        val coreFile: File,
+        val gameFile: File,
+        val saveData: ByteArray?
+    )
 }

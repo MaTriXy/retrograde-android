@@ -1,19 +1,17 @@
 package com.codebutler.retrograde.app.shared
 
 import android.app.Activity
-import android.support.v17.leanback.widget.Presenter
-import android.support.v7.widget.PopupMenu
+import androidx.leanback.widget.Presenter
+import androidx.appcompat.widget.PopupMenu
 import android.view.ContextThemeWrapper
 import android.view.Gravity
 import android.view.MenuItem
 import com.codebutler.retrograde.R
-import com.codebutler.retrograde.app.feature.game.GameActivity
+import com.codebutler.retrograde.app.feature.game.GameLauncherActivity
 import com.codebutler.retrograde.app.shared.ui.ItemViewLongClickListener
 import com.codebutler.retrograde.lib.library.db.RetrogradeDatabase
 import com.codebutler.retrograde.lib.library.db.entity.Game
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.async
-import org.jetbrains.anko.coroutines.experimental.bg
+import io.reactivex.Completable
 
 class GameInteractionHandler(private val activity: Activity, private val retrogradeDb: RetrogradeDatabase) :
         ItemViewLongClickListener,
@@ -25,7 +23,7 @@ class GameInteractionHandler(private val activity: Activity, private val retrogr
     private var gameForPopupMenu: Game? = null
 
     fun onItemClick(item: Game) {
-        activity.startActivity(GameActivity.newIntent(activity, item))
+        activity.startActivity(GameLauncherActivity.newIntent(activity, item))
     }
 
     override fun onItemLongClicked(itemViewHolder: Presenter.ViewHolder, item: Any): Boolean {
@@ -60,12 +58,9 @@ class GameInteractionHandler(private val activity: Activity, private val retrogr
                 true
             }
             R.id.toggle_favorite -> {
-                async(UI) {
-                    bg {
-                        retrogradeDb.gameDao().update(game.copy(isFavorite = !game.isFavorite))
-                    }.await()
-                    onRefreshListener?.invoke()
-                }
+                Completable.fromCallable {
+                    retrogradeDb.gameDao().update(game.copy(isFavorite = !game.isFavorite))
+                }.subscribe()
                 true
             }
             else -> false

@@ -25,7 +25,9 @@ import android.os.Build
 import android.os.Environment
 import com.codebutler.retrograde.lib.BuildConfig
 import io.reactivex.Single
-import okio.Okio
+import okio.buffer
+import okio.sink
+import okio.source
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.http.GET
@@ -73,23 +75,22 @@ class CoreManager(context: Context, retrofit: Retrofit) {
 
         return api.downloadZip(uri.toString())
                 .map { response ->
-                    if (response.isSuccessful) {
-                        val zipStream = response.body()!!
-                        while (true) {
-                            val entry = zipStream.nextEntry ?: break
-                            if (entry.name == libFileName) {
-                                Okio.source(zipStream).use { zipSource ->
-                                    Okio.sink(destFile).use { fileSink ->
-                                        Okio.buffer(zipSource).readAll(fileSink)
-                                        return@map destFile
-                                    }
+                    if (!response.isSuccessful) {
+                        throw Exception(response.errorBody()!!.string())
+                    }
+                    val zipStream = response.body()!!
+                    while (true) {
+                        val entry = zipStream.nextEntry ?: break
+                        if (entry.name == libFileName) {
+                            zipStream.source().use { zipSource ->
+                                destFile.sink().use { fileSink ->
+                                    zipSource.buffer().readAll(fileSink)
+                                    return@map destFile
                                 }
                             }
                         }
-                        throw Exception("Library not found in zip")
-                    } else {
-                        throw Exception(response.errorBody()!!.string())
                     }
+                    throw Exception("Library not found in zip")
                 }
     }
 

@@ -23,6 +23,7 @@
 
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.codebutler.retrograde">
 
     <uses-feature
@@ -49,7 +50,8 @@
         android:theme="@style/AppTheme"
         android:process=":main"
         android:isGame="true"
-        android:banner="@mipmap/ic_banner">
+        android:banner="@mipmap/ic_banner"
+        tools:ignore="GoogleAppIndexingWarning">
 
         <activity android:name="com.codebutler.retrograde.app.feature.main.MainActivity">
             <intent-filter>
@@ -64,6 +66,11 @@
         </activity>
 
         <activity
+            android:name="com.codebutler.retrograde.app.feature.game.GameLauncherActivity"
+            android:launchMode="singleTop"
+            android:theme="@style/GameTheme"/>
+
+        <activity
             android:name="com.codebutler.retrograde.app.feature.game.GameActivity"
             android:process=":game"
             android:launchMode="singleTop"
@@ -75,10 +82,15 @@
             android:theme="@style/LeanbackPreferences"/>
 
         <activity
-            android:name=".app.feature.settings.DebugLogActivity"/>
+            android:name=".app.feature.settings.DebugLogActivity"
+            android:label="@string/debug_log"/>
+
+        <activity
+            android:name=".app.feature.settings.LicensesActivity"
+            android:label="@string/licenses"/>
 
         <meta-data
-            android:name="io.fabric.ApiKey"
-            android:value="83662f2d278441bb282ae75bb1372d250b1bdc04"/>
+            android:name="com.bugsnag.android.API_KEY"
+            android:value="c29c39914cff446185ffeb61a6badda7"/>
     </application>
 </manifest>

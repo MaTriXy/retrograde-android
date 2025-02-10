@@ -5,12 +5,12 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.preference.PreferenceManager.getDefaultSharedPreferences
-import android.support.v14.preference.PreferenceFragment
-import android.support.v17.preference.LeanbackPreferenceFragment
-import android.support.v17.preference.LeanbackSettingsFragment
-import android.support.v7.preference.Preference
-import android.support.v7.preference.PreferenceCategory
-import android.support.v7.preference.PreferenceScreen
+import androidx.preference.PreferenceFragment
+import androidx.leanback.preference.LeanbackPreferenceFragment
+import androidx.leanback.preference.LeanbackSettingsFragment
+import androidx.preference.Preference
+import androidx.preference.PreferenceCategory
+import androidx.preference.PreferenceScreen
 import android.util.TypedValue
 import android.view.ContextThemeWrapper
 import com.codebutler.retrograde.R
@@ -58,11 +58,7 @@ class SettingsFragment : LeanbackSettingsFragment(), HasFragmentInjector {
 
         @PerChildFragment
         @ContributesAndroidInjector
-        abstract fun prefFragment(): PrefScreenFragment
-
-        @PerChildFragment
-        @ContributesAndroidInjector
-        abstract fun logFragment(): DebugLogActivity
+        abstract fun prefScreenFragment(): PrefScreenFragment
     }
 
     class PrefScreenFragment : LeanbackPreferenceFragment() {
@@ -88,7 +84,7 @@ class SettingsFragment : LeanbackSettingsFragment(), HasFragmentInjector {
                 val providers = storageProviderRegistry.providers.sortedBy { it.name }
                 for (provider in providers) {
                     val pref = MasterSwitchPreference(contextThemeWrapper)
-                    pref.setDefaultValue(true)
+                    pref.setDefaultValue(provider.enabledByDefault)
                     pref.key = provider.id
                     pref.title = provider.name
                     val prefsFragmentClass = provider.prefsFragmentClass

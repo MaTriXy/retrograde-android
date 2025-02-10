@@ -38,11 +38,11 @@ import retrofit2.http.GET
 import retrofit2.http.HTTP
 import retrofit2.http.PUT
 import retrofit2.http.Url
-import kotlin.coroutines.experimental.buildIterator
 
 class WebDavClient(
-        okHttpClient: OkHttpClient,
-        private val xmlPullParserFactory: XmlPullParserFactory) {
+    okHttpClient: OkHttpClient,
+    private val xmlPullParserFactory: XmlPullParserFactory
+) {
 
     companion object {
         private const val NS = "DAV:"
@@ -100,7 +100,7 @@ class WebDavClient(
     }
 
     private fun readMultiStatus(parser: XmlPullParser): Iterator<DavResponse> {
-        return buildIterator {
+        return iterator {
             parser.require(XmlPullParser.START_TAG, NS, "multistatus")
             while (parser.next() != XmlPullParser.END_TAG) {
                 if (parser.eventType != XmlPullParser.START_TAG) {
@@ -181,18 +181,21 @@ class WebDavClient(
     }
 
     data class DavResponse(
-            val href: String?,
-            val propStat: DavPropStat?)
+        val href: String?,
+        val propStat: DavPropStat?
+    )
 
     data class DavPropStat(
-            val prop: DavProp?,
-            val status: String?)
+        val prop: DavProp?,
+        val status: String?
+    )
 
     data class DavProp(
-            val creationDate: String?,
-            val displayName: String?,
-            val contentLength: Long,
-            val resourceType: DavResourceType)
+        val creationDate: String?,
+        val displayName: String?,
+        val contentLength: Long,
+        val resourceType: DavResourceType
+    )
 
     private interface WebDavApi {
 

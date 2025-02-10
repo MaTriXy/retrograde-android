@@ -19,8 +19,8 @@
 
 package com.codebutler.retrograde.app.feature.game
 
+import android.annotation.SuppressLint
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
@@ -35,22 +35,22 @@ import android.widget.TextView
 import com.codebutler.retrograde.BuildConfig
 import com.codebutler.retrograde.R
 import com.codebutler.retrograde.common.kotlin.bindView
-import com.codebutler.retrograde.common.kotlin.isAllZeros
 import com.codebutler.retrograde.lib.android.RetrogradeActivity
-import com.codebutler.retrograde.lib.core.CoreManager
 import com.codebutler.retrograde.lib.game.GameLoader
 import com.codebutler.retrograde.lib.game.audio.GameAudio
 import com.codebutler.retrograde.lib.game.display.GameDisplay
 import com.codebutler.retrograde.lib.game.display.gl.GlGameDisplay
 import com.codebutler.retrograde.lib.game.display.sw.SwGameDisplay
+import com.codebutler.retrograde.lib.game.input.GameInput
 import com.codebutler.retrograde.lib.library.GameLibrary
-import com.codebutler.retrograde.lib.library.db.RetrogradeDatabase
 import com.codebutler.retrograde.lib.library.db.entity.Game
 import com.codebutler.retrograde.lib.retro.RetroDroid
+import com.codebutler.retrograde.lib.util.subscribeBy
+import com.gojuno.koptional.None
+import com.gojuno.koptional.Some
+import com.gojuno.koptional.toOptional
 import com.uber.autodispose.android.lifecycle.scope
-import com.uber.autodispose.kotlin.autoDisposable
-import dagger.Provides
-import io.reactivex.Completable
+import com.uber.autodispose.autoDisposable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import timber.log.Timber
@@ -58,12 +58,8 @@ import javax.inject.Inject
 
 class GameActivity : RetrogradeActivity() {
     companion object {
-        private const val EXTRA_GAME_ID = "game_id"
-
-        fun newIntent(context: Context, game: Game) =
-                Intent(context, GameActivity::class.java).apply {
-            putExtra(EXTRA_GAME_ID, game.id)
-        }
+        const val EXTRA_GAME_ID = "game_id"
+        const val EXTRA_SAVE_FILE = "save_file"
     }
 
     @Inject lateinit var gameLibrary: GameLibrary
@@ -73,6 +69,7 @@ class GameActivity : RetrogradeActivity() {
     private val gameDisplayLayout by bindView<FrameLayout>(R.id.game_display_layout)
 
     private lateinit var gameDisplay: GameDisplay
+    private lateinit var gameInput: GameInput
 
     private var game: Game? = null
     private var retroDroid: RetroDroid? = null
@@ -89,6 +86,8 @@ class GameActivity : RetrogradeActivity() {
         } else {
             SwGameDisplay(this)
         }
+
+        gameInput = GameInput(this)
 
         gameDisplayLayout.addView(gameDisplay.view, MATCH_PARENT, MATCH_PARENT)
         lifecycle.addObserver(gameDisplay)
@@ -126,14 +125,20 @@ class GameActivity : RetrogradeActivity() {
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
         super.dispatchGenericMotionEvent(event)
-        retroDroid?.onMotionEvent(event)
+        gameInput.onMotionEvent(event)
         return true
     }
 
+    @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         super.dispatchKeyEvent(event)
-        retroDroid?.onKeyEvent(event)
+        gameInput.onKeyEvent(event)
         return true
+    }
+
+    override fun onBackPressed() {
+        retroDroid?.stop()
+        retroDroid?.unloadGame()
     }
 
     private fun addFpsView() {
@@ -155,24 +160,38 @@ class GameActivity : RetrogradeActivity() {
 
     private fun loadRetro(data: GameLoader.GameData) {
         try {
-            val retroDroid = RetroDroid(gameDisplay, GameAudio(), this, data.coreFile)
+            val retroDroid = RetroDroid(gameDisplay, GameAudio(), gameInput, this, data.coreFile)
             lifecycle.addObserver(retroDroid)
 
-            retroDroid.gameUnloadedCallback = { saveData ->
-                val game = this.game
-                val saveCompletable = if (saveData != null && saveData.isAllZeros().not() && game != null) {
-                    gameLibrary.setGameSave(game, saveData)
-                } else {
-                    Completable.complete()
+            retroDroid.gameUnloaded
+                .map { optionalSaveData ->
+                    if (optionalSaveData is Some) {
+                        val tmpFile = createTempFile()
+                        tmpFile.writeBytes(optionalSaveData.value)
+                        tmpFile.toOptional()
+                    } else {
+                        None
+                    }
                 }
-                saveCompletable
-                        .subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .subscribe {
-                            setResult(Activity.RESULT_OK)
-                            finish()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .autoDisposable(scope())
+                .subscribeBy(
+                    onNext = { optionalTmpFile ->
+                        val resultData = Intent()
+                        if (optionalTmpFile is Some) {
+                            resultData.putExtra(EXTRA_GAME_ID, data.game.id)
+                            resultData.putExtra(EXTRA_SAVE_FILE, optionalTmpFile.value.absolutePath)
                         }
-            }
+                        setResult(Activity.RESULT_OK, resultData)
+                        finish()
+                    },
+                    onError = { error ->
+                        Timber.e(error, "Error unloading game")
+                        setResult(Activity.RESULT_CANCELED)
+                        finish()
+                    }
+                )
 
             retroDroid.loadGame(data.gameFile.absolutePath, data.saveData)
             retroDroid.start()
@@ -186,10 +205,5 @@ class GameActivity : RetrogradeActivity() {
     }
 
     @dagger.Module
-    class Module {
-
-        @Provides
-        fun gameLoader(coreManager: CoreManager, retrogradeDatabase: RetrogradeDatabase, gameLibrary: GameLibrary) =
-                GameLoader(coreManager, retrogradeDatabase, gameLibrary)
-    }
+    class Module
 }

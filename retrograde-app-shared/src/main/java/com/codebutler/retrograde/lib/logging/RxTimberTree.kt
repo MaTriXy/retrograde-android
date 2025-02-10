@@ -1,4 +1,4 @@
-package com.codebutler.retrograde.app
+package com.codebutler.retrograde.lib.logging
 
 import com.jakewharton.rxrelay2.ReplayRelay
 import io.reactivex.Observable
@@ -15,9 +15,10 @@ class RxTimberTree : Timber.DebugTree() {
     }
 
     data class LogEntry(
-            val timestamp: Long,
-            val priority: Int,
-            val tag: String?,
-            val message: String?,
-            val error: Throwable?)
+        val timestamp: Long,
+        val priority: Int,
+        val tag: String?,
+        val message: String?,
+        val error: Throwable?
+    )
 }

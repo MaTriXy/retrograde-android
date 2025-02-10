@@ -19,28 +19,29 @@
 
 package com.codebutler.retrograde.lib.library
 
-import android.support.annotation.DrawableRes
-import android.support.annotation.StringRes
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import com.codebutler.retrograde.lib.R
 import java.util.Locale
 
 data class GameSystem(
-        val id: String,
+    val id: String,
 
-        @StringRes
-        val titleResId: Int,
+    @StringRes
+    val titleResId: Int,
 
-        @StringRes
-        val shortTitleResId: Int,
+    @StringRes
+    val shortTitleResId: Int,
 
-        @DrawableRes
-        val imageResId: Int,
+    @DrawableRes
+    val imageResId: Int,
 
-        val sortKey: String,
+    val sortKey: String,
 
-        val coreFileName: String,
+    val coreFileName: String,
 
-        val supportedExtensions: List<String>) {
+    val supportedExtensions: List<String>
+) {
 
     companion object {
         private val SYSTEMS = listOf(

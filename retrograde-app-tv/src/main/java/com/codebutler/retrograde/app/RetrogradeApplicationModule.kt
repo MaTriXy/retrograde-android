@@ -19,19 +19,24 @@
 
 package com.codebutler.retrograde.app
 
-import android.arch.persistence.room.Room
+import androidx.room.Room
 import android.content.Context
 import android.preference.PreferenceManager
 import com.codebutler.retrograde.app.feature.game.GameActivity
+import com.codebutler.retrograde.app.feature.game.GameLauncherActivity
 import com.codebutler.retrograde.app.feature.main.MainActivity
 import com.codebutler.retrograde.app.feature.settings.DebugLogActivity
+import com.codebutler.retrograde.app.feature.settings.LicensesActivity
 import com.codebutler.retrograde.app.feature.settings.SettingsActivity
 import com.codebutler.retrograde.lib.core.CoreManager
+import com.codebutler.retrograde.lib.game.GameLoader
 import com.codebutler.retrograde.lib.injection.PerActivity
 import com.codebutler.retrograde.lib.injection.PerApp
 import com.codebutler.retrograde.lib.library.GameLibrary
 import com.codebutler.retrograde.lib.library.db.RetrogradeDatabase
-import com.codebutler.retrograde.lib.ovgdb.db.OvgdbMetadataProvider
+import com.codebutler.retrograde.lib.library.db.dao.GameSearchDao
+import com.codebutler.retrograde.lib.logging.RxTimberTree
+import com.codebutler.retrograde.metadata.ovgdb.OvgdbMetadataProvider
 import com.codebutler.retrograde.lib.storage.StorageProvider
 import com.codebutler.retrograde.lib.storage.StorageProviderRegistry
 import com.codebutler.retrograde.lib.storage.local.LocalStorageProvider
@@ -65,12 +70,20 @@ abstract class RetrogradeApplicationModule {
     abstract fun mainActivity(): MainActivity
 
     @PerActivity
+    @ContributesAndroidInjector
+    abstract fun gameLauncherActivity(): GameLauncherActivity
+
+    @PerActivity
     @ContributesAndroidInjector(modules = [GameActivity.Module::class])
     abstract fun gameActivity(): GameActivity
 
     @PerActivity
     @ContributesAndroidInjector(modules = [SettingsActivity.Module::class])
     abstract fun settingsActivity(): SettingsActivity
+
+    @PerActivity
+    @ContributesAndroidInjector
+    abstract fun licensesActivity(): LicensesActivity
 
     @PerActivity
     @ContributesAndroidInjector
@@ -94,8 +107,10 @@ abstract class RetrogradeApplicationModule {
         @JvmStatic
         fun retrogradeDb(app: RetrogradeApplication) =
                 Room.databaseBuilder(app, RetrogradeDatabase::class.java, RetrogradeDatabase.DB_NAME)
-                .fallbackToDestructiveMigration()
-                .build()
+                        .addCallback(GameSearchDao.CALLBACK)
+                        .addMigrations(GameSearchDao.MIGRATION)
+                        .fallbackToDestructiveMigration()
+                        .build()
 
         @Provides
         @PerApp
@@ -125,8 +140,9 @@ abstract class RetrogradeApplicationModule {
         @PerApp
         @JvmStatic
         fun gameLibrary(
-                db: RetrogradeDatabase,
-                storageProviderRegistry: StorageProviderRegistry) =
+            db: RetrogradeDatabase,
+            storageProviderRegistry: StorageProviderRegistry
+        ) =
                 GameLibrary(db, storageProviderRegistry)
 
         @Provides
@@ -145,9 +161,10 @@ abstract class RetrogradeApplicationModule {
                 .baseUrl("https://example.com")
                 .addConverterFactory(object : Converter.Factory() {
                     override fun responseBodyConverter(
-                            type: Type?,
-                            annotations: Array<out Annotation>?,
-                            retrofit: Retrofit?): Converter<ResponseBody, *>? {
+                        type: Type?,
+                        annotations: Array<out Annotation>?,
+                        retrofit: Retrofit?
+                    ): Converter<ResponseBody, *>? {
                         if (type == ZipInputStream::class.java) {
                             return Converter<ResponseBody, ZipInputStream> { responseBody ->
                                 ZipInputStream(responseBody.byteStream())
@@ -173,5 +190,11 @@ abstract class RetrogradeApplicationModule {
         @JvmStatic
         fun rxPrefs(context: Context) =
                 RxSharedPreferences.create(PreferenceManager.getDefaultSharedPreferences(context))
+
+        @Provides
+        @PerApp
+        @JvmStatic
+        fun gameLoader(coreManager: CoreManager, retrogradeDatabase: RetrogradeDatabase, gameLibrary: GameLibrary) =
+                GameLoader(coreManager, retrogradeDatabase, gameLibrary)
     }
 }

@@ -22,7 +22,7 @@ package com.codebutler.retrograde.storage.webdav
 import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.net.Uri
-import android.support.v17.preference.LeanbackPreferenceFragment
+import androidx.leanback.preference.LeanbackPreferenceFragment
 import com.codebutler.retrograde.lib.storage.StorageFile
 import com.codebutler.retrograde.lib.library.db.entity.Game
 import com.codebutler.retrograde.lib.library.metadata.GameMetadataProvider
@@ -45,8 +45,9 @@ import java.net.URLDecoder
 import java.util.concurrent.TimeUnit
 
 class WebDavStorageProvider(
-        private val context: Context,
-        override val metadataProvider: GameMetadataProvider) : StorageProvider {
+    private val context: Context,
+    override val metadataProvider: GameMetadataProvider
+) : StorageProvider {
 
     private val webDavClient: WebDavClient
     private val webDavScanner: WebDavScanner
@@ -83,6 +84,8 @@ class WebDavStorageProvider(
     override val uriSchemes = listOf("webdav", "webdavs")
 
     override val prefsFragmentClass: Class<out LeanbackPreferenceFragment>? = WebDavPreferenceFragment::class.java
+
+    override val enabledByDefault = false
 
     override fun listFiles(): Single<Iterable<StorageFile>> = Single.fromCallable {
         val url = readConfig().url
@@ -141,9 +144,10 @@ class WebDavStorageProvider(
             .build()
 
     private data class Configuration(
-            val url: String?,
-            val username: String?,
-            val password: String?)
+        val url: String?,
+        val username: String?,
+        val password: String?
+    )
 
     /**
      * Games URIs are webdav:// or webdavs:// in the game database,

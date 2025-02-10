@@ -19,20 +19,20 @@
 
 package com.codebutler.retrograde.app.feature.search
 
-import android.arch.lifecycle.Observer
-import android.arch.paging.LivePagedListBuilder
 import android.content.Context
 import android.os.Bundle
-import android.support.v17.leanback.app.SearchSupportFragment
-import android.support.v17.leanback.widget.ArrayObjectAdapter
-import android.support.v17.leanback.widget.HeaderItem
-import android.support.v17.leanback.widget.ListRow
-import android.support.v17.leanback.widget.ListRowPresenter
-import android.support.v17.leanback.widget.ObjectAdapter
-import android.support.v17.leanback.widget.OnItemViewClickedListener
-import android.support.v17.leanback.widget.Presenter
-import android.support.v17.leanback.widget.Row
-import android.support.v17.leanback.widget.RowPresenter
+import androidx.leanback.app.SearchSupportFragment
+import androidx.leanback.widget.ArrayObjectAdapter
+import androidx.leanback.widget.HeaderItem
+import androidx.leanback.widget.ListRow
+import androidx.leanback.widget.ListRowPresenter
+import androidx.leanback.widget.ObjectAdapter
+import androidx.leanback.widget.OnItemViewClickedListener
+import androidx.leanback.widget.Presenter
+import androidx.leanback.widget.Row
+import androidx.leanback.widget.RowPresenter
+import androidx.lifecycle.Observer
+import androidx.paging.LivePagedListBuilder
 import com.codebutler.retrograde.R
 import com.codebutler.retrograde.app.feature.main.MainActivity
 import com.codebutler.retrograde.app.shared.GameInteractionHandler
@@ -43,7 +43,7 @@ import com.codebutler.retrograde.lib.library.db.RetrogradeDatabase
 import com.codebutler.retrograde.lib.library.db.entity.Game
 import com.jakewharton.rxrelay2.PublishRelay
 import com.uber.autodispose.android.lifecycle.scope
-import com.uber.autodispose.kotlin.autoDisposable
+import com.uber.autodispose.autoDisposable
 import dagger.Provides
 import dagger.android.support.AndroidSupportInjection
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -83,7 +83,7 @@ class GamesSearchFragment : SearchSupportFragment(),
 
         setOnItemViewClickedListener(this)
 
-        gameInteractionHandler.onRefreshListener = cb@ {
+        gameInteractionHandler.onRefreshListener = cb@{
             search(lastQuery ?: return@cb)
         }
     }
@@ -91,10 +91,11 @@ class GamesSearchFragment : SearchSupportFragment(),
     override fun getResultsAdapter(): ObjectAdapter = rowsAdapter
 
     override fun onItemClicked(
-            itemViewHolder: Presenter.ViewHolder,
-            item: Any,
-            rowViewHolder: RowPresenter.ViewHolder,
-            row: Row) {
+        itemViewHolder: Presenter.ViewHolder,
+        item: Any,
+        rowViewHolder: RowPresenter.ViewHolder,
+        row: Row
+    ) {
         when (item) {
             is Game -> gameInteractionHandler.onItemClick(item)
         }
@@ -113,11 +114,14 @@ class GamesSearchFragment : SearchSupportFragment(),
     private fun search(query: String) {
         lastQuery = query
         rowsAdapter.clear()
-        LivePagedListBuilder(retrogradeDb.gameDao().search(query), 50)
+        LivePagedListBuilder(retrogradeDb.gameSearchDao().search(query), 50)
                 .build()
                 .observe(this, Observer { pagedList ->
                     val header = HeaderItem(getString(R.string.search_results, query))
-                    val adapter = PagedListObjectAdapter(GamePresenter(gameInteractionHandler), Game.DIFF_CALLBACK)
+                    val adapter = PagedListObjectAdapter(
+                            GamePresenter(requireActivity(), gameInteractionHandler),
+                            Game.DIFF_CALLBACK
+                    )
                     adapter.pagedList = pagedList
                     rowsAdapter.add(ListRow(header, adapter))
                 })

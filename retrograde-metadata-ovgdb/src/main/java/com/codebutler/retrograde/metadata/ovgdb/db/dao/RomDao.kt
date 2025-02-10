@@ -17,19 +17,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.codebutler.retrograde.lib.ovgdb.db.dao
+package com.codebutler.retrograde.metadata.ovgdb.db.dao
 
-import android.arch.persistence.room.Dao
-import android.arch.persistence.room.Query
-import com.codebutler.retrograde.lib.ovgdb.db.entity.Rom
+import androidx.room.Dao
+import androidx.room.Query
+import com.codebutler.retrograde.metadata.ovgdb.db.entity.OvgdbRom
 import io.reactivex.Maybe
 
 @Dao
 interface RomDao {
 
     @Query("SELECT * FROM roms WHERE romFileName = :romFileName LIMIT 1")
-    fun findByFileName(romFileName: String): Maybe<Rom>
+    fun findByFileName(romFileName: String): Maybe<OvgdbRom>
 
     @Query("SELECT * FROM roms WHERE romHashCRC = :crc LIMIT 1")
-    fun findByCRC(crc: String): Maybe<Rom>
+    fun findByCRC(crc: String): Maybe<OvgdbRom>
 }

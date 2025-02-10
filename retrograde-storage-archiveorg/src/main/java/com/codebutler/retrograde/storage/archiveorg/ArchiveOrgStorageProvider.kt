@@ -21,7 +21,7 @@ package com.codebutler.retrograde.storage.archiveorg
 
 import android.content.Context
 import android.net.Uri
-import android.support.v17.preference.LeanbackPreferenceFragment
+import androidx.leanback.preference.LeanbackPreferenceFragment
 import com.codebutler.retrograde.lib.library.db.entity.Game
 import com.codebutler.retrograde.lib.library.metadata.GameMetadataProvider
 import com.codebutler.retrograde.lib.storage.StorageFile
@@ -30,8 +30,8 @@ import com.codebutler.retrograde.storage.archiveorg.model.DetailsResponse
 import com.gojuno.koptional.None
 import com.gojuno.koptional.Optional
 import com.gojuno.koptional.toOptional
-import com.squareup.moshi.KotlinJsonAdapterFactory
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import io.reactivex.Completable
 import io.reactivex.ObservableTransformer
 import io.reactivex.Single
@@ -61,6 +61,8 @@ class ArchiveOrgStorageProvider(private val context: Context) : StorageProvider 
     override val prefsFragmentClass: Class<out LeanbackPreferenceFragment>? = null
 
     override val metadataProvider: GameMetadataProvider = ArchiveOrgMetadataProvider(api)
+
+    override val enabledByDefault = false
 
     override fun listFiles(): Single<Iterable<StorageFile>> {
         return api.advancedSearch()

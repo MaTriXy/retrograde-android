@@ -19,14 +19,15 @@
 
 package com.codebutler.retrograde.lib.ui
 
+import android.content.Context
 import android.content.res.Resources
-import android.support.annotation.DrawableRes
-import android.support.annotation.StringRes
-import android.support.v17.leanback.widget.ImageCardView
-import android.support.v17.leanback.widget.Presenter
 import android.view.ContextThemeWrapper
 import android.view.ViewGroup
 import android.widget.ImageView
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
+import androidx.leanback.widget.ImageCardView
+import androidx.leanback.widget.Presenter
 import com.codebutler.retrograde.lib.R
 
 sealed class TextOrResource {
@@ -43,13 +44,15 @@ open class SimpleItem private constructor (val title: TextOrResource, @DrawableR
     constructor(@StringRes resId: Int, @DrawableRes image: Int = 0) : this (TextOrResource.Resource(resId), image)
 }
 
-class SimpleItemPresenter : Presenter() {
+class SimpleItemPresenter(context: Context) : Presenter() {
+
+    private val themedContext = ContextThemeWrapper(context, R.style.SimpleImageCardTheme)
 
     private var imageWidth: Int = -1
     private var imageHeight: Int = -1
 
     override fun onCreateViewHolder(parent: ViewGroup): ViewHolder {
-        val cardView = ImageCardView(ContextThemeWrapper(parent.context, R.style.SimpleImageCardTheme))
+        val cardView = ImageCardView(themedContext)
         val res = cardView.resources
         imageWidth = res.getDimensionPixelSize(R.dimen.card_width)
         imageHeight = res.getDimensionPixelSize(R.dimen.card_height)

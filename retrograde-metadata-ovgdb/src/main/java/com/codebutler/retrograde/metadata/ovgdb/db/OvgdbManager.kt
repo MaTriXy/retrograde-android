@@ -19,7 +19,7 @@
 
 package com.codebutler.retrograde.metadata.ovgdb.db
 
-import android.arch.persistence.room.Room
+import androidx.room.Room
 import android.content.Context
 import com.jakewharton.rxrelay2.BehaviorRelay
 import io.reactivex.Single
@@ -57,9 +57,9 @@ class OvgdbManager(context: Context, executorService: ExecutorService) {
     private fun copyDbFromAssets(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val dbFile = context.getDatabasePath(DB_NAME)
-        val dbVersion = prefs.getInt(PREFS_KEY_VERSION, 0)
         // FIXME
-        //if (!dbFile.exists() || dbVersion != DB_VERSION) {
+        // val dbVersion = prefs.getInt(PREFS_KEY_VERSION, 0)
+        // if (!dbFile.exists() || dbVersion != DB_VERSION) {
             context.assets.open(ASSET_NAME_DB).use { input ->
                 FileOutputStream(dbFile).use { output ->
                     input.copyTo(output)
@@ -68,6 +68,6 @@ class OvgdbManager(context: Context, executorService: ExecutorService) {
             val editor = prefs.edit()
             editor.putInt(PREFS_KEY_VERSION, DB_VERSION)
             editor.apply()
-        //}
+        // }
     }
 }

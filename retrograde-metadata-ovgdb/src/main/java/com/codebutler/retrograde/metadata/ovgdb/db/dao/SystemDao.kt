@@ -17,16 +17,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.codebutler.retrograde.lib.ovgdb.db.dao
+package com.codebutler.retrograde.metadata.ovgdb.db.dao
 
-import android.arch.persistence.room.Dao
-import android.arch.persistence.room.Query
-import com.codebutler.retrograde.lib.ovgdb.db.entity.System
+import androidx.room.Dao
+import androidx.room.Query
+import com.codebutler.retrograde.metadata.ovgdb.db.entity.OvgdbSystem
 import io.reactivex.Maybe
 
 @Dao
 interface SystemDao {
 
     @Query("SELECT * FROM systems WHERE systemID = :systemId")
-    fun findById(systemId: Int): Maybe<System>
+    fun findById(systemId: Int): Maybe<OvgdbSystem>
 }

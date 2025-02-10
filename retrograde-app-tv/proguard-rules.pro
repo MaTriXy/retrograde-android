@@ -25,26 +25,46 @@
 -keep class kotlin.Metadata { *; }
 -keep class android.arch.lifecycle.**
 
+## Okio
+-dontwarn okio.**
+
 ## OkHttp
 -dontwarn okhttp3.**
 -dontwarn org.apache.harmony.xnet.provider.jsse.SSLParametersImpl
 -dontnote com.android.org.conscrypt.SSLParametersImpl
 -dontnote dalvik.system.CloseGuard
 -dontnote sun.security.ssl.SSLContextImpl
-
-## Okio
--dontwarn okio.**
-
-## Picasso
--dontwarn com.squareup.okhttp.**
--dontnote com.squareup.okhttp.**
+-dontnote org.apache.harmony.xnet.provider.jsse.SSLParametersImpl
+-dontnote org.conscrypt.ConscryptEngineSocket
 
 ## Retrofit
--dontwarn retrofit2.**
--keep class retrofit2.** { *; }
+-dontwarn retrofit2.Platform$Java8
 
 ## Moshi
 -dontnote sun.misc.Unsafe
+
+## Google API
+-dontwarn com.google.api.client.json.jackson2.JacksonFactory
+-keepclassmembers class * {
+  @com.google.api.client.util.Key <fields>;
+}
+
+## Guava
+-dontnote com.google.appengine.api.ThreadManager
+-dontnote com.google.apphosting.api.ApiProxy
+-dontwarn java.lang.ClassValue
+-dontwarn com.google.j2objc.annotations.Weak
+-dontwarn org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement
+-dontwarn org.apache.commons.codec.binary.Base64
+-dontwarn org.apache.commons.codec.binary.StringUtils
+
+## Retrograde
+-keep class com.codebutler.retrograde.lib.retro.**
+-keep class **.model.**
+-keepclassmembers class **.model.** {
+  <init>(...);
+  <fields>;
+}
 
 ## Misc
 -dontwarn com.uber.javaxextras.**
@@ -54,30 +74,3 @@
 -dontwarn junit.**
 -dontwarn com.google.errorprone.**
 -dontnote android.net.http.*
-
-## Google API
--keep class com.google.** { *;}
--keep interface com.google.** { *;}
--keepclassmembers class * {
-  @com.google.api.client.util.Key <fields>;
-}
-
-
-## The Google API library pulled in a bunch of apache/guava crap.
-# TODO: Get rid of this soon.
--dontwarn org.apache.http.**
--dontwarn org.apache.log.**
--dontwarn org.apache.log4j.**
--dontwarn org.apache.avalon.**
--dontwarn javax.servlet.**
--dontnote org.apache.log4j.**
--dontnote com.google.appengine.api.ThreadManager
--dontnote com.google.apphosting.api.ApiProxy
-
-## Retrograde
--keep class com.codebutler.retrograde.lib.retro.**
--keep class **.model.**
--keepclassmembers class **.model.** {
-  <init>(...);
-  <fields>;
-}

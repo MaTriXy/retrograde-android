@@ -17,18 +17,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.codebutler.retrograde.lib.ovgdb.db.entity
+package com.codebutler.retrograde.metadata.ovgdb.db.entity
 
-import android.arch.persistence.room.ColumnInfo
-import android.arch.persistence.room.Entity
-import android.arch.persistence.room.PrimaryKey
+import androidx.room.ColumnInfo
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 
 @Entity(tableName = "regions")
-data class Region(
-        @PrimaryKey
-        @ColumnInfo(name = "regionID")
-        val id: Int,
+data class OvgdbRegion(
+    @PrimaryKey
+    @ColumnInfo(name = "regionID")
+    val id: Int,
 
-        @ColumnInfo(name = "regionName")
-        val name: String
+    @ColumnInfo(name = "regionName")
+    val name: String
 )

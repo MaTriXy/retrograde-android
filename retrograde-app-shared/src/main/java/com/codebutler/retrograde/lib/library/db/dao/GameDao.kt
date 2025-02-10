@@ -19,12 +19,12 @@
 
 package com.codebutler.retrograde.lib.library.db.dao
 
-import android.arch.paging.DataSource
-import android.arch.persistence.room.Dao
-import android.arch.persistence.room.Delete
-import android.arch.persistence.room.Insert
-import android.arch.persistence.room.Query
-import android.arch.persistence.room.Update
+import androidx.paging.DataSource
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.Query
+import androidx.room.Update
 import com.codebutler.retrograde.lib.library.db.entity.Game
 import io.reactivex.Completable
 import io.reactivex.Maybe
@@ -44,9 +44,6 @@ interface GameDao {
         FROM games
         """)
     fun selectCounts(): Single<GameLibraryCounts>
-
-    @Query("SELECT * FROM games WHERE title LIKE '%' || REPLACE(:query, ' ', '%') || '%' ORDER BY title ASC, id DESC")
-    fun search(query: String): DataSource.Factory<Int, Game>
 
     @Query("SELECT * FROM games ORDER BY title ASC, id DESC")
     fun selectAll(): DataSource.Factory<Int, Game>

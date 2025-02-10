@@ -1,25 +1,25 @@
 package com.codebutler.retrograde.app.feature.home
 
-import android.arch.lifecycle.Observer
-import android.arch.paging.DataSource
-import android.arch.paging.LivePagedListBuilder
+import androidx.lifecycle.Observer
+import androidx.paging.DataSource
+import androidx.paging.LivePagedListBuilder
 import android.content.Context
 import android.os.Bundle
-import android.support.v17.leanback.app.VerticalGridSupportFragment
-import android.support.v17.leanback.widget.OnItemViewClickedListener
-import android.support.v17.leanback.widget.Presenter
-import android.support.v17.leanback.widget.Row
-import android.support.v17.leanback.widget.RowPresenter
-import android.support.v17.leanback.widget.VerticalGridPresenter
+import androidx.leanback.app.VerticalGridSupportFragment
+import androidx.leanback.widget.OnItemViewClickedListener
+import androidx.leanback.widget.Presenter
+import androidx.leanback.widget.Row
+import androidx.leanback.widget.RowPresenter
+import androidx.leanback.widget.VerticalGridPresenter
 import com.codebutler.retrograde.R
 import com.codebutler.retrograde.app.feature.main.MainActivity
 import com.codebutler.retrograde.app.shared.GameInteractionHandler
 import com.codebutler.retrograde.app.shared.GamePresenter
+import com.codebutler.retrograde.app.shared.ui.PagedListObjectAdapter
 import com.codebutler.retrograde.lib.injection.PerFragment
 import com.codebutler.retrograde.lib.library.GameSystem
 import com.codebutler.retrograde.lib.library.db.RetrogradeDatabase
 import com.codebutler.retrograde.lib.library.db.entity.Game
-import com.codebutler.retrograde.app.shared.ui.PagedListObjectAdapter
 import dagger.Provides
 import dagger.android.support.AndroidSupportInjection
 import javax.inject.Inject
@@ -74,10 +74,11 @@ class GamesGridFragment : VerticalGridSupportFragment(), OnItemViewClickedListen
     }
 
     override fun onItemClicked(
-            itemViewHolder: Presenter.ViewHolder,
-            item: Any,
-            rowViewHolder: RowPresenter.ViewHolder?,
-            row: Row?) {
+        itemViewHolder: Presenter.ViewHolder,
+        item: Any,
+        rowViewHolder: RowPresenter.ViewHolder?,
+        row: Row?
+    ) {
         when (item) {
             is Game -> gameInteractionHandler.onItemClick(item)
         }
@@ -95,7 +96,10 @@ class GamesGridFragment : VerticalGridSupportFragment(), OnItemViewClickedListen
         LivePagedListBuilder(getQuery(mode, param), 50)
                 .build()
                 .observe(this, Observer { pagedList ->
-                    val adapter = PagedListObjectAdapter(GamePresenter(gameInteractionHandler), Game.DIFF_CALLBACK)
+                    val adapter = PagedListObjectAdapter(GamePresenter(
+                            requireActivity(),
+                            gameInteractionHandler
+                    ), Game.DIFF_CALLBACK)
                     adapter.pagedList = pagedList
                     this.adapter = adapter
                 })

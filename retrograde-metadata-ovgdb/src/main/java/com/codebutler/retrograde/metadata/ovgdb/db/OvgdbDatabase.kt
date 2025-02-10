@@ -19,23 +19,23 @@
 
 package com.codebutler.retrograde.metadata.ovgdb.db
 
-import android.arch.persistence.room.Database
-import android.arch.persistence.room.RoomDatabase
-import com.codebutler.retrograde.lib.ovgdb.db.dao.RegionDao
-import com.codebutler.retrograde.lib.ovgdb.db.dao.ReleaseDao
-import com.codebutler.retrograde.lib.ovgdb.db.dao.RomDao
-import com.codebutler.retrograde.lib.ovgdb.db.dao.SystemDao
-import com.codebutler.retrograde.lib.ovgdb.db.entity.Region
-import com.codebutler.retrograde.lib.ovgdb.db.entity.Release
-import com.codebutler.retrograde.lib.ovgdb.db.entity.Rom
-import com.codebutler.retrograde.lib.ovgdb.db.entity.System
+import androidx.room.Database
+import androidx.room.RoomDatabase
+import com.codebutler.retrograde.metadata.ovgdb.db.entity.OvgdbRegion
+import com.codebutler.retrograde.metadata.ovgdb.db.entity.OvgdbRelease
+import com.codebutler.retrograde.metadata.ovgdb.db.entity.OvgdbRom
+import com.codebutler.retrograde.metadata.ovgdb.db.dao.RegionDao
+import com.codebutler.retrograde.metadata.ovgdb.db.dao.ReleaseDao
+import com.codebutler.retrograde.metadata.ovgdb.db.dao.RomDao
+import com.codebutler.retrograde.metadata.ovgdb.db.dao.SystemDao
+import com.codebutler.retrograde.metadata.ovgdb.db.entity.OvgdbSystem
 
 @Database(
         entities = [
-            Region::class,
-            Release::class,
-            Rom::class,
-            System::class],
+            OvgdbRegion::class,
+            OvgdbRelease::class,
+            OvgdbRom::class,
+            OvgdbSystem::class],
         version = 1,
         exportSchema = false)
 abstract class OvgdbDatabase : RoomDatabase() {

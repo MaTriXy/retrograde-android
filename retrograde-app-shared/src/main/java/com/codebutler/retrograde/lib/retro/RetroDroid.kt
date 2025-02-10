@@ -19,53 +19,56 @@
 
 package com.codebutler.retrograde.lib.retro
 
-import android.arch.lifecycle.DefaultLifecycleObserver
-import android.arch.lifecycle.LifecycleOwner
+import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Bitmap
 import android.os.Handler
-import android.view.KeyEvent
-import android.view.MotionEvent
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import com.codebutler.retrograde.common.BitmapCache
 import com.codebutler.retrograde.common.BufferCache
 import com.codebutler.retrograde.common.BuildConfig
-import com.codebutler.retrograde.common.kotlin.containsAny
 import com.codebutler.retrograde.lib.binding.LibRetrograde
 import com.codebutler.retrograde.lib.game.audio.GameAudio
 import com.codebutler.retrograde.lib.game.display.FpsCalculator
 import com.codebutler.retrograde.lib.game.display.GameDisplay
+import com.codebutler.retrograde.lib.game.input.GameInput
+import com.gojuno.koptional.Optional
+import com.gojuno.koptional.toOptional
+import com.jakewharton.rxrelay2.PublishRelay
 import com.sun.jna.Native
+import io.reactivex.Observable
+import io.reactivex.Single
+import io.reactivex.schedulers.Schedulers
 import timber.log.Timber
 import java.io.File
 import java.nio.ByteBuffer
-import java.util.Timer
-import kotlin.concurrent.fixedRateTimer
 import kotlin.experimental.and
 
 /**
  * Native Android frontend for LibRetro!
  */
 class RetroDroid(
-        private val gameDisplay: GameDisplay,
-        private val gameAudio: GameAudio,
-        private val context: Context,
-        coreFile: File) : DefaultLifecycleObserver {
-
+    private val gameDisplay: GameDisplay,
+    private val gameAudio: GameAudio,
+    private val gameInput: GameInput,
+    private val context: Context,
+    coreFile: File
+) : DefaultLifecycleObserver {
     private val audioSampleBufferCache = BufferCache()
     private val fpsCalculator = FpsCalculator()
     private val handler = Handler()
-    private val pressedKeys = mutableSetOf<Int>()
     private val retro: Retro
     private val variables: MutableMap<String, Retro.Variable> = mutableMapOf()
     private val videoBufferCache = BufferCache()
     private val videoBitmapCache = BitmapCache()
 
+    private val gameUnloadedRelay = PublishRelay.create<Optional<ByteArray>>()
+
     private var region: Retro.Region? = null
     private var systemAVInfo: Retro.SystemAVInfo? = null
     private var systemInfo: Retro.SystemInfo? = null
-    private var timer: Timer? = null
-    private var videoBitmapConfig: Bitmap.Config = Bitmap.Config.ARGB_8888
-    private var videoBytesPerPixel: Int = 0
+    private var thread: RetroThread? = null
+    private var pixelFormat: Retro.PixelFormat? = null
 
     val fps: Long
         get() = fpsCalculator.fps
@@ -73,7 +76,7 @@ class RetroDroid(
     /**
      * Callback when game is unloaded, to allow for persisting save ram.
      */
-    var gameUnloadedCallback: ((saveData: ByteArray?) -> Unit)? = null
+    val gameUnloaded: Observable<Optional<ByteArray>> = gameUnloadedRelay.hide()
 
     init {
         Native.setCallbackExceptionHandler { c, e ->
@@ -97,6 +100,9 @@ class RetroDroid(
         retro.environmentCallback = RetroDroidEnvironmentCallback()
 
         retro.videoCallback = { data, width, height, pitch ->
+            val pixelFormat = pixelFormat!!
+            val videoBytesPerPixel = pixelFormat.bytesPerPixel
+
             val newBuffer = videoBufferCache.getBuffer(width * height * videoBytesPerPixel)
             for (i in 0 until height) {
                 val widthAsBytes = width * videoBytesPerPixel
@@ -108,7 +114,19 @@ class RetroDroid(
                         widthAsBytes      // LENGTH
                 )
             }
-            val bitmap = videoBitmapCache.getBitmap(width, height, videoBitmapConfig)
+
+            // This is actually BGRx
+            if (pixelFormat == Retro.PixelFormat.XRGB8888) {
+                for (i in 0 until newBuffer.size step videoBytesPerPixel) {
+                    val r = newBuffer[i + 2]
+                    val b = newBuffer[i]
+                    newBuffer[i] = r
+                    newBuffer[i + 2] = b
+                    newBuffer[i + 3] = 0xFF.toByte()
+                }
+            }
+
+            val bitmap = videoBitmapCache.getBitmap(width, height, pixelFormat.bitmapConfig)
             bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(newBuffer))
             gameDisplay.update(bitmap)
         }
@@ -165,13 +183,33 @@ class RetroDroid(
 
     fun start() {
         val avInfo = systemAVInfo
-        if (this.timer != null || avInfo == null) {
+        if (this.thread != null || avInfo == null) {
             return
         }
-        this.timer = fixedRateTimer(period = 1000L / avInfo.timing.fps.toLong()) {
+        this.thread = RetroThread.fromFPS(avInfo.timing.fps) {
             retro.run()
             fpsCalculator.update()
         }
+        this.thread?.setPriority(Thread.MAX_PRIORITY)
+        this.thread?.start()
+    }
+
+    fun stop() {
+        thread?.interrupt()
+        thread = null
+    }
+
+    @SuppressLint("CheckResult")
+    fun unloadGame() {
+        Single
+            .fromCallable {
+                retro.getMemoryData(Retro.MemoryId.SAVE_RAM).toOptional()
+            }
+            .subscribeOn(Schedulers.io())
+            .doOnSuccess {
+                retro.unloadGame()
+            }
+            .subscribe(gameUnloadedRelay)
     }
 
     override fun onResume(owner: LifecycleOwner) {
@@ -183,127 +221,21 @@ class RetroDroid(
     }
 
     override fun onDestroy(owner: LifecycleOwner) {
-        unloadGame()
         deinit()
     }
 
-    fun onKeyEvent(event: KeyEvent) {
-        when (event.action) {
-            KeyEvent.ACTION_DOWN -> pressedKeys.add(event.keyCode)
-            KeyEvent.ACTION_UP -> pressedKeys.remove(event.keyCode)
-        }
-    }
-
-    fun onMotionEvent(event: MotionEvent) {
-        var left = false
-        var right = false
-        var up = false
-        var down = false
-
-        val coords = MotionEvent.PointerCoords()
-        event.getPointerCoords(0, coords)
-
-        when (coords.getAxisValue(MotionEvent.AXIS_HAT_X)) {
-            1.0F -> right = true
-            -1.0F -> left = true
-        }
-
-        when (coords.getAxisValue(MotionEvent.AXIS_HAT_Y)) {
-            1.0F -> down = true
-            -1.0F -> up = true
-        }
-
-        when (event.rawX) {
-            1.0F -> right = true
-            -1.0F -> left = true
-        }
-
-        when (event.rawY) {
-            1.0F -> down = true
-            -1.0F -> up = true
-        }
-
-        updateKey(KeyEvent.KEYCODE_DPAD_LEFT, left)
-        updateKey(KeyEvent.KEYCODE_DPAD_RIGHT, right)
-        updateKey(KeyEvent.KEYCODE_DPAD_UP, up)
-        updateKey(KeyEvent.KEYCODE_DPAD_DOWN, down)
-    }
-
-    private fun stop() {
-        timer?.cancel()
-        timer = null
-    }
-
-    private fun unloadGame() {
-        val saveRam = retro.getMemoryData(Retro.MemoryId.SAVE_RAM)
-        retro.unloadGame()
-        gameUnloadedCallback?.invoke(saveRam)
-    }
-
     private fun deinit() {
+        gameInput.deinit()
         retro.deinit()
     }
 
     @Suppress("UNUSED_PARAMETER")
-    private fun onInputState(port: Int, device: Int, index: Int, id: Int): Boolean {
-        if (port != 0) {
-            // Only P1 supported for now.
-            return false
-        }
-
-        when (Retro.Device.fromValue(device)) {
-            Retro.Device.NONE -> { }
-            Retro.Device.JOYPAD -> {
-                return when (Retro.DeviceId.fromValue(id)) {
-                    Retro.DeviceId.JOYPAD_A -> pressedKeys.containsAny(
-                            KeyEvent.KEYCODE_A,
-                            KeyEvent.KEYCODE_BUTTON_A)
-                    Retro.DeviceId.JOYPAD_B -> pressedKeys.containsAny(
-                            KeyEvent.KEYCODE_B,
-                            KeyEvent.KEYCODE_BUTTON_B)
-                    Retro.DeviceId.JOYPAD_DOWN -> pressedKeys.contains(KeyEvent.KEYCODE_DPAD_DOWN)
-                    Retro.DeviceId.JOYPAD_L -> pressedKeys.contains(KeyEvent.KEYCODE_BUTTON_L1)
-                    Retro.DeviceId.JOYPAD_L2 -> pressedKeys.contains(KeyEvent.KEYCODE_BUTTON_L2)
-                    Retro.DeviceId.JOYPAD_L3 -> false
-                    Retro.DeviceId.JOYPAD_LEFT -> pressedKeys.contains(KeyEvent.KEYCODE_DPAD_LEFT)
-                    Retro.DeviceId.JOYPAD_R -> pressedKeys.contains(KeyEvent.KEYCODE_BUTTON_R1)
-                    Retro.DeviceId.JOYPAD_R2 -> pressedKeys.contains(KeyEvent.KEYCODE_BUTTON_R2)
-                    Retro.DeviceId.JOYPAD_R3 -> false
-                    Retro.DeviceId.JOYPAD_RIGHT -> pressedKeys.contains(KeyEvent.KEYCODE_DPAD_RIGHT)
-                    Retro.DeviceId.JOYPAD_SELECT -> pressedKeys.contains(KeyEvent.KEYCODE_BUTTON_SELECT)
-                    Retro.DeviceId.JOYPAD_START -> pressedKeys.containsAny(
-                            KeyEvent.KEYCODE_BUTTON_START,
-                            KeyEvent.KEYCODE_ENTER)
-                    Retro.DeviceId.JOYPAD_UP -> pressedKeys.contains(KeyEvent.KEYCODE_DPAD_UP)
-                    Retro.DeviceId.JOYPAD_X -> pressedKeys.containsAny(
-                            KeyEvent.KEYCODE_BUTTON_X,
-                            KeyEvent.KEYCODE_X)
-                    Retro.DeviceId.JOYPAD_Y -> pressedKeys.containsAny(
-                            KeyEvent.KEYCODE_BUTTON_Y,
-                            KeyEvent.KEYCODE_Y)
-                    else -> return false
-                }
-            }
-            Retro.Device.MOUSE -> TODO()
-            Retro.Device.KEYBOARD -> return false
-            Retro.Device.LIGHTGUN -> TODO()
-            Retro.Device.ANALOG -> return false
-            Retro.Device.POINTER -> TODO()
-        }
-        return false
-    }
+    private fun onInputState(port: Int, device: Int, index: Int, id: Int): Boolean =
+            gameInput.isButtonPressed(port, device, id)
 
     private fun updateSystemAVInfo(systemAVInfo: Retro.SystemAVInfo) {
         gameAudio.init(systemAVInfo.timing.sample_rate.toInt())
         this.systemAVInfo = systemAVInfo
-    }
-
-    private fun updateKey(keyCode: Int, isPressed: Boolean) {
-        if (isPressed) {
-            pressedKeys.add(keyCode)
-        } else {
-            pressedKeys.remove(keyCode)
-        }
     }
 
     inner class RetroDroidEnvironmentCallback : Retro.EnvironmentCallback {
@@ -357,21 +289,8 @@ class RetroDroid(
         }
 
         override fun onSetPixelFormat(pixelFormat: Retro.PixelFormat): Boolean {
-            val bitmapConfig = when (pixelFormat) {
-                Retro.PixelFormat.XRGB8888 -> Bitmap.Config.ARGB_8888
-                Retro.PixelFormat.RGB565 -> Bitmap.Config.RGB_565
-                else -> TODO()
-            }
-
-            val pixelFormatInfo = pixelFormat.info
-
-            Timber.d("""onSetPixelFormat: $pixelFormat
-                bitsPerPixel: ${pixelFormatInfo.bitsPerPixel}
-                bytesPerPixel: ${pixelFormatInfo.bytesPerPixel}""")
-
-            videoBitmapConfig = bitmapConfig
-            videoBytesPerPixel = pixelFormatInfo.bytesPerPixel
-
+            Timber.d("""onSetPixelFormat: $pixelFormat (bytesPerPixel: ${pixelFormat.bytesPerPixel})""")
+            this@RetroDroid.pixelFormat = pixelFormat
             return true
         }
 
@@ -381,13 +300,12 @@ class RetroDroid(
         }
 
         override fun onSetControllerInfo(info: List<Retro.ControllerInfo>) {
-            // FIXME: Implement
             Timber.d("onSetControllerInfo: $info")
         }
 
         override fun onGetVariableUpdate(): Boolean {
             // FIXME: Implement
-            //Timber.d("onGetVariableUpdate")
+            // Timber.d("onGetVariableUpdate")
             return false
         }
 
@@ -407,7 +325,7 @@ class RetroDroid(
 
         override fun onSetMemoryMaps() {
             // FIXME: Implement
-            //Timber.d("onSetMemoryMaps")
+            // Timber.d("onSetMemoryMaps")
         }
 
         override fun onUnsupportedCommand(cmd: Int) {

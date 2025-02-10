@@ -22,12 +22,12 @@ package com.codebutler.retrograde.lib.storage.local
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
-import android.support.v17.preference.LeanbackPreferenceFragment
+import androidx.leanback.preference.LeanbackPreferenceFragment
 import com.codebutler.retrograde.common.kotlin.calculateCrc32
 import com.codebutler.retrograde.lib.R
-import com.codebutler.retrograde.lib.storage.StorageFile
 import com.codebutler.retrograde.lib.library.db.entity.Game
 import com.codebutler.retrograde.lib.library.metadata.GameMetadataProvider
+import com.codebutler.retrograde.lib.storage.StorageFile
 import com.codebutler.retrograde.lib.storage.StorageProvider
 import com.gojuno.koptional.None
 import com.gojuno.koptional.Optional
@@ -37,8 +37,9 @@ import io.reactivex.Single
 import java.io.File
 
 class LocalStorageProvider(
-        context: Context,
-        override val metadataProvider: GameMetadataProvider) : StorageProvider {
+    context: Context,
+    override val metadataProvider: GameMetadataProvider
+) : StorageProvider {
 
     override val id: String = "local"
 
@@ -48,10 +49,11 @@ class LocalStorageProvider(
 
     override val prefsFragmentClass: Class<LeanbackPreferenceFragment>? = null
 
+    override val enabledByDefault = true
+
     override fun listFiles(): Single<Iterable<StorageFile>> = Single.fromCallable {
         Environment.getExternalStorageDirectory()
                 .walk()
-                .maxDepth(1)
                 .filter { file -> file.isFile && file.name.startsWith(".").not() }
                 .map { file ->
                     StorageFile(

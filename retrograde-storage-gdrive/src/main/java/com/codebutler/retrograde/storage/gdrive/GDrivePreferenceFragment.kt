@@ -19,12 +19,13 @@
 
 package com.codebutler.retrograde.storage.gdrive
 
+import android.annotation.SuppressLint
 import android.app.Activity.RESULT_OK
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.support.v17.preference.LeanbackPreferenceFragment
-import android.support.v7.preference.Preference
+import androidx.leanback.preference.LeanbackPreferenceFragment
+import androidx.preference.Preference
 import android.widget.Toast
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -33,6 +34,9 @@ import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.common.api.ApiException
 import timber.log.Timber
 
+// RestrictedApi warning is a known issue:
+// https://developers.google.com/android/guides/releases#march_20_2018_-_version_1200
+@SuppressLint("RestrictedApi")
 class GDrivePreferenceFragment : LeanbackPreferenceFragment() {
 
     companion object {
@@ -74,6 +78,7 @@ class GDrivePreferenceFragment : LeanbackPreferenceFragment() {
                     authenticateGoogleComplete()
                 } catch (e: ApiException) {
                     val message = getString(R.string.gdrive_sign_in_failed, e.message, e.statusCode.toString())
+                    // noinspection TimberExceptionLogging
                     Timber.e(e, message)
                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                 }

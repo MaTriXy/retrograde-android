@@ -19,11 +19,11 @@
 
 package com.codebutler.retrograde.lib.library.db.entity
 
-import android.arch.persistence.room.Entity
-import android.arch.persistence.room.Index
-import android.arch.persistence.room.PrimaryKey
 import android.net.Uri
-import android.support.v7.recyclerview.extensions.DiffCallback
+import androidx.recyclerview.widget.DiffUtil
+import androidx.room.Entity
+import androidx.room.Index
+import androidx.room.PrimaryKey
 
 @Entity(
         tableName = "games",
@@ -38,20 +38,20 @@ import android.support.v7.recyclerview.extensions.DiffCallback
         ]
 )
 data class Game(
-        @PrimaryKey(autoGenerate = true)
-        val id: Int = 0,
-        val fileName: String,
-        val fileUri: Uri,
-        val title: String,
-        val systemId: String,
-        val developer: String?,
-        val coverFrontUrl: String?,
-        val lastIndexedAt: Long,
-        val lastPlayedAt: Long? = null,
-        val isFavorite: Boolean = false) {
-
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
+    val fileName: String,
+    val fileUri: Uri,
+    val title: String,
+    val systemId: String,
+    val developer: String?,
+    val coverFrontUrl: String?,
+    val lastIndexedAt: Long,
+    val lastPlayedAt: Long? = null,
+    val isFavorite: Boolean = false
+) {
         companion object {
-                val DIFF_CALLBACK = object : DiffCallback<Game>() {
+                val DIFF_CALLBACK = object : DiffUtil.ItemCallback<Game>() {
                         override fun areItemsTheSame(oldItem: Game, newItem: Game): Boolean {
                                 return oldItem.id == newItem.id
                         }
